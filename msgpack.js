@@ -1,4 +1,5 @@
-MessagePack = function(data){
+MessagePack = {};
+MessagePack.Decoder = function(data){
     this.data = data;
     this.index = 0;
     if(MessagePack.hasVBS){
@@ -9,7 +10,7 @@ MessagePack = function(data){
 }
 
 MessagePack.unpack = function(data){
-    var unpacker = new MessagePack(data);
+    var unpacker = new MessagePack.Decoder(data);
     return unpacker.unpack();
 };
 
@@ -46,7 +47,7 @@ if(typeof execScript != 'undefined'){
 
 MessagePack.hasVBS = 'msgpack_getByte' in this;
 
-with({p: MessagePack.prototype}){
+with({p: MessagePack.Decoder.prototype}){
     p.unpack = function(){
         var type = this.unpack_uint8();
         if((type >> 7) == 0){
