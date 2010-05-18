@@ -1,0 +1,17 @@
+* MessagePack-JS
+  JavaScript implimentation for MessagePack serialization format.
+
+** usage
+
+  var msgpack = MessagePack.load_url("/msgpack_items");
+
+  alert(msgpack[0]);
+  alert(msgpack[1]);
+  alert(msgpack[2]);
+  alert(msgpack[3]);
+
+** support environment
+  tested for IE7+ , Firefox 3+ , Google Chrome
+
+** reference
+  http://msgpack.sourceforge.net/
