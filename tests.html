@@ -1,0 +1,122 @@
+<html>
+ <head>
+  <title> test </title>
+  <script language="JavaScript" type="text/javascript" 
+      src="./jsunit/app/jsUnitCore.js">
+  </script>
+  <script language="JavaScript" type="text/javascript" 
+      src="./msgpack.js">
+  </script>
+  <script language="JavaScript" type="text/javascript">
+      function testAssert_positive_fixnum() {
+          var data = decodeURI("%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0x00 == 0", 0, output);
+      }
+      function testAssert_negative_fixnum() {
+          var data = unescape("%FF");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xFF == -1", -1, output);
+      }
+      function testAssert_uint8() {
+          var data = unescape("%CC%FF");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xCCFF == 255", 255, output);
+      }
+      function testAssert_FixRaw() {
+          var data = unescape("%A1%61");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xA161 == 'a'", 'a', output);
+      }
+      function testAssert_FixArray() {
+          var data = unescape("%91%00");
+          var output = MessagePack.unpack(data);
+          assertArrayEquals("0x9100 == [0]", [0], output);
+      }
+      function testAssert_FixMap() {
+          var data = unescape("%81%00%c0");
+          var output = MessagePack.unpack(data);
+          assertHashEquals("0x8100c0 == {0 => null}", {0: null}, output);
+      }
+      function testAssert_FixMap() {
+          var data = unescape("%81%00%c0");
+          var output = MessagePack.unpack(data);
+          assertHashEquals("0x8100c0 == {0 => null}", {0: null}, output);
+      }
+      function testAssert_Nil() {
+          var data = unescape("%c0");
+          var output = MessagePack.unpack(data);
+          assertNull("0xc0 == null", output);
+      }
+      function testAssert_Nil() {
+          var data = unescape("%c0");
+          var output = MessagePack.unpack(data);
+          assertNull("0xc0 == null", output);
+      }
+      function testAssert_True() {
+          var data = unescape("%c3");
+          var output = MessagePack.unpack(data);
+          assertTrue("0xc3 == true", output);
+      }
+      function testAssert_False() {
+          var data = unescape("%c2");
+          var output = MessagePack.unpack(data);
+          assertFalse("0xc2 == false", output);
+      }
+      function testAssert_double() {
+          var data = unescape("%cb%3f%b9%99%99%99%99%99%9a");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xcb3fb999999999999a == 0.1", 0.1, output);
+      }
+      function testAssert_uint16() {
+          var data = unescape("%cd%80%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xcd8000 == 32768", 32768, output);
+      }
+      function testAssert_uint32() {
+          var data = unescape("%ce%00%10%00%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xce00100000 == 1048576", 1048576, output);
+      }
+      function testAssert_uint64() {
+          var data = unescape("%cf%00%00%01%00%00%00%00%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xcf0000010000000000 == 1099511627776", 1099511627776, output);
+      }
+      function testAssert_int8() {
+          var data = unescape("%d0%c0");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xd0c0 == -64", -64, output);
+      }
+      function testAssert_int16() {
+          var data = unescape("%d1%fc%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xd1fc00 == -1024", -1024, output);
+      }
+      function testAssert_int32() {
+          var data = unescape("%d2%ff%f0%00%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("0xd2fff00000 == -1048576", -1048576, output);
+      }
+      function testAssert_int64() {
+          var data = unescape("%d3%ff%ff%ff%00%00%00%00%00");
+          var output = MessagePack.unpack(data);
+          assertEquals("d3ffffff0000000000", -1099511627776, output);
+      }
+      function testAssert_raw16() {
+          var data = unescape("%da%00%28%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20");
+          var output = MessagePack.unpack(data);
+          assertEquals("40 spaces", "                                        ", output);
+      }
+      function testAssert_array16() {
+          var data = unescape("%dc%00%10%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00");
+          var output = MessagePack.unpack(data);
+          assertArrayEquals("[0]*16", [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], output);
+      }
+  </script>
+  </script>
+</head>
+<body>
+</body>
+</html>
+
