@@ -151,7 +151,7 @@ with({p: MessagePack.Decoder.prototype}){
             offset = offset || 0;
             var j = this.index + offset;
             if(j < this.length){
-                return msgpack_getByte(this.data, j);
+                return msgpack_getByte(this.data, j) & 0xff;
             }else{
                 throw "MessagePackFailure: index is out of range";
             }

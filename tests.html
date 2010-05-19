@@ -8,6 +8,16 @@
       src="./msgpack.js">
   </script>
   <script language="JavaScript" type="text/javascript">
+      if(MessagePack.hasVBS){
+          // quick hack for Internet Explorer unescape();
+          execScript(
+                  'Function msgpack_getByte(data, pos)\r\n' +
+                  '  msgpack_getByte = AscB(MidB(data, 2*pos + 1, 1))\r\n'+
+                  'End Function\r\n' , "VBScript"
+                  );
+      }
+            
+
       function testAssert_positive_fixnum() {
           var data = decodeURI("%00");
           var output = MessagePack.unpack(data);
