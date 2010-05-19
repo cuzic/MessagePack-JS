@@ -14,21 +14,39 @@ MessagePack.unpack = function(data){
     return unpacker.unpack();
 };
 
-MessagePack.load_url = function(url){
+MessagePack.load_url = function(url, fn){
     var req = new XMLHttpRequest();
-    req.open('GET', url, false);
+    req.open('GET', url, !!fn);
     if(req.overrideMimeType){
         req.overrideMimeType('text/plain; charset=x-user-defined');
     }
     req.send(null);
-    if(req.status != 200 && req.status != 0) return undefined;
-    var data;
-    if(MessagePack.hasVBS){
-        data = req.responseBody;
-    }else{
-        data = req.responseText;
+    var msgpack_unpack = function(){
+        try {
+            if(req.status != 200 && req.status != 0)
+                return null;
+            if(MessagePack.hasVBS){
+                data = req.responseBody;
+            }else{
+                data = req.responseText;
+            }
+            return MessagePack.unpack(data)
+        } finally {
+            if (fn)
+                req.onreadystatehange = null;
+            req = null;
+        }
     }
-    return MessagePack.unpack(data);
+    if(fn){
+        req.onreadystatehange = function(){
+            if( req.readyState != 4)
+                return;
+            fn(MessagePack.unpack(msgpack_unpack()));
+        }
+    }else{
+        return msgpack_unpack();
+    }
+    return null;
 }
 
 if(typeof execScript != 'undefined'){
@@ -50,11 +68,11 @@ MessagePack.hasVBS = 'msgpack_getByte' in this;
 with({p: MessagePack.Decoder.prototype}){
     p.unpack = function(){
         var type = this.unpack_uint8();
-        if((type >> 7) == 0){
+        if(type < 0x80){
             var positive_fixnum = type;
             return positive_fixnum;
-        }else if((type ^ 0xe0) <= 0x1f){
-            var negative_fixnum = type ^ 0xe0;
+        }else if((type ^ 0xe0) < 0x20){
+            var negative_fixnum = (type ^ 0xe0) - 0x20;
             return negative_fixnum;
         }
         var size;
@@ -135,7 +153,7 @@ with({p: MessagePack.Decoder.prototype}){
             if(j < this.length){
                 return msgpack_getByte(this.data, j);
             }else{
-                throw "MessagePackFailure: 1 index is out of range";
+                throw "MessagePackFailure: index is out of range";
             }
         }
     }else{
@@ -145,7 +163,7 @@ with({p: MessagePack.Decoder.prototype}){
             if(j < this.length){
                 return this.data.charCodeAt(j) & 0xff;
             }else{
-                throw "MessagePackFailure: 2 index is out of range";
+                throw "MessagePackFailure: index is out of range";
             }
         }
     }
@@ -215,7 +233,7 @@ with({p: MessagePack.Decoder.prototype}){
 
     with({p: p}){
         p.unpack_raw = function(size){
-            if( this.length <= this.index + size){
+            if( this.length < this.index + size){
                 throw "MessagePackFailure: index is out of range"
                     + " " + this.index + " " + size + " " + this.length;
             }
