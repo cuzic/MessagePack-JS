@@ -123,6 +123,13 @@
           var output = MessagePack.unpack(data);
           assertArrayEquals("[0]*16", [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], output);
       }
+
+      function testAssert_hiragana() {
+          var data = unescape("%a6%e3%81%82%e3%81%84");
+          var output = MessagePack.unpack(data);
+          assertEquals("hiragana ai", "あい", output);
+      }
+
   </script>
   </script>
 </head>

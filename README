@@ -10,17 +10,17 @@
   alert(msgpack[2]);
   alert(msgpack[3]);
 
-** support environment
-  tested for IE6+ , Firefox 3+ , Google Chrome
+** environment
+  tested for IE 8.0.6 , Firefox 3.6.3 , Google Chrome 4.1
 
-** reference
+** see other
   http://msgpack.sourceforge.net/
 
 ** LISENCE
   MIT Lisence
 
 ** Test
-  Test code (tests.html) is targeted for jsunit.js <http://github.com/pivotal/jsunit>.
+  Test code (tests.html) is targeted for JsUnit http://github.com/pivotal/jsunit
 
   if you want to test msgpack.js,
     please deploy as follows:

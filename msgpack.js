@@ -1,18 +1,10 @@
 MessagePack = {};
-MessagePack.Decoder = function(data){
-    this.data = data;
-    this.index = 0;
-    if(MessagePack.hasVBS){
-        this.length = msgpack_getLength(data);
-    }else{
-        this.length = data.length;
-    }
-}
-
 MessagePack.unpack = function(data){
     var unpacker = new MessagePack.Decoder(data);
     return unpacker.unpack();
 };
+
+MessagePack.CharSet = 0;
 
 MessagePack.load_url = function(url, fn){
     var req = new XMLHttpRequest();
@@ -48,6 +40,30 @@ MessagePack.load_url = function(url, fn){
     }
     return null;
 }
+
+MessagePack.Decoder = function(data, charSet){
+    this.index = 0;
+    this.data = data;
+    if(MessagePack.hasVBS){
+        this.length = msgpack_getLength(data);
+    }else{
+        this.length = data.length;
+    }
+    charSet = charSet || MessagePack.CharSet || 0;
+    if(charSet == 'utf-8'){
+        charSet = 0;
+    }
+    else if(charSet == 'unicode'){
+        charSet = 1;
+    }
+    else if(charSet == 'raw'){
+        charSet = -1;
+    }
+    else{
+        charSet = 0;
+    }
+}
+
 
 if(typeof execScript != 'undefined'){
     execScript(
@@ -146,28 +162,6 @@ with({p: MessagePack.Decoder.prototype}){
         }
     }
 
-    if(MessagePack.hasVBS){
-        p.getc = function(offset){
-            offset = offset || 0;
-            var j = this.index + offset;
-            if(j < this.length){
-                return msgpack_getByte(this.data, j) & 0xff;
-            }else{
-                throw "MessagePackFailure: index is out of range";
-            }
-        }
-    }else{
-        p.getc = function(offset){
-            offset = offset || 0;
-            var j = this.index + offset;
-            if(j < this.length){
-                return this.data.charCodeAt(j) & 0xff;
-            }else{
-                throw "MessagePackFailure: index is out of range";
-            }
-        }
-    }
-
     p.unpack_uint8 = function(){
         var byte = this.getc();
         this.index++;
@@ -175,35 +169,35 @@ with({p: MessagePack.Decoder.prototype}){
     };
 
     p.unpack_uint16 = function(){
+        var bytes = this.read(2);
         var uint16 = 
-            (this.getc() << 8) +
-            this.getc(1);
+            (bytes[0] << 8) + bytes[1];
         this.index += 2;
         return uint16;
     }
 
     p.unpack_uint32 = function(){
-        var j = this.index;
+        var bytes = this.read(4);
         var uint32 = 
-            this.getc( ) * Math.pow(2, 24) +
-            this.getc(1) * Math.pow(2, 16) +
-            this.getc(2) * Math.pow(2, 8) +
-            this.getc(3);
+            bytes[0] * Math.pow(2, 24) +
+            bytes[1] * Math.pow(2, 16) +
+            bytes[2] * Math.pow(2, 8) +
+            bytes[3]
         this.index += 4;
         return uint32;
     }
 
     p.unpack_uint64 = function(){
-        var j = this.index;
+        var bytes = this.read(8);
         var uint64 = 
-            this.getc( ) * Math.pow(2, 56) +
-            this.getc(1) * Math.pow(2, 48) +
-            this.getc(2) * Math.pow(2, 40) +
-            this.getc(3) * Math.pow(2, 32) +
-            this.getc(4) * Math.pow(2, 24) +
-            this.getc(5) * Math.pow(2, 16) +
-            this.getc(6) * Math.pow(2, 8 ) +
-            this.getc(7);
+            bytes[0] * Math.pow(2, 56) +
+            bytes[1] * Math.pow(2, 48) +
+            bytes[2] * Math.pow(2, 40) +
+            bytes[3] * Math.pow(2, 32) +
+            bytes[4] * Math.pow(2, 24) +
+            bytes[5] * Math.pow(2, 16) +
+            bytes[6] * Math.pow(2, 8 ) +
+            bytes[7]
         this.index += 8;
         return uint64;
     }
@@ -231,18 +225,40 @@ with({p: MessagePack.Decoder.prototype}){
             uint64 - Math.pow(2, 64);
     }
 
-    with({p: p}){
-        p.unpack_raw = function(size){
-            if( this.length < this.index + size){
-                throw "MessagePackFailure: index is out of range"
-                    + " " + this.index + " " + size + " " + this.length;
+    p.unpack_raw = function(size){
+        if( this.length < this.index + size){
+            throw "MessagePackFailure: index is out of range"
+                + " " + this.index + " " + size + " " + this.length;
+        }
+        var bytes = this.read(size);
+        this.index += size;
+        if(this.charSet == 1){
+            return String.prototype.fromCharCode.apply(String, bytes);
+        }else if(this.charSet == -1){
+            return bytes;
+        }
+        else{
+        // assume UTF-8 string
+            var i = 0, str = "";
+            while(i < bytes.length){
+                var c = bytes[i];
+                if( c < 128){
+                    str += String.fromCharCode(c);
+                    i++;
+                }
+                else if((c ^ 0xc0) < 32){
+                    var code = (c ^ 0xc0) << 6 | (bytes[i + 1] & 63);
+                    str += String.fromCharCode(code);
+                    i += 2;
+                }
+                else {
+                    var code = ((c & 15) << 12) | ((bytes[i+1] & 63) << 6) |
+                        (bytes[i+2] & 63);
+                    str += String.fromCharCode(code);
+                    i += 3;
+                }
             }
-            var bytes = [];
-            for(var i = size-1; i >= 0; --i){
-                bytes[i] = this.getc(i);
-            }
-            this.index += size;
-            return String.fromCharCode.apply(String, bytes);
+            return str;
         }
     }
 
@@ -282,5 +298,50 @@ with({p: MessagePack.Decoder.prototype}){
         var frac = hfrac * Math.pow(2, exp - 20) +
             l32   * Math.pow(2, exp - 52);
         return (sign == 0 ? 1 : -1) * frac;
+    }
+
+    if(MessagePack.hasVBS){
+        p.read = function(length){
+            var j = this.index;
+            if(j + length <= this.length){
+                var byte_array = new Array(length);
+                for(var i = 0; i < length; ++i){
+                    byte_array[i] = msgpack_getByte(this.data, j + i);
+                }
+                return byte_array;
+            }else{
+                throw "MessagePackFailure: index is out of range";
+            }
+        }
+
+        p.getc = function(){
+            var j = this.index;
+            if(j < this.length){
+                return msgpack_getByte(this.data, j);
+            }else{
+                throw "MessagePackFailure: index is out of range";
+            }
+        }
+    }else{
+        p.read = function(length){
+            var j = this.index;
+            if(j + length <= this.length){
+                var bytes = [];
+                for(var i = 0; i < length; ++i){
+                    bytes[i] = this.data.charCodeAt(j+i);
+                }
+                return bytes;
+            }else{
+                throw "MessagePackFailure: index is out of range";
+            }
+        }
+        p.getc = function(){
+            var j = this.index;
+            if(j < this.length){
+                return this.data.charCodeAt(j);
+            }else{
+                throw "MessagePackFailure: index is out of range";
+            }
+        }
     }
 }
