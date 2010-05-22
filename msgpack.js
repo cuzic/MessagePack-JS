@@ -6,41 +6,6 @@ MessagePack.unpack = function(data){
 
 MessagePack.CharSet = 0;
 
-MessagePack.load_url = function(url, fn){
-    var req = new XMLHttpRequest();
-    req.open('GET', url, !!fn);
-    if(req.overrideMimeType){
-        req.overrideMimeType('text/plain; charset=x-user-defined');
-    }
-    req.send(null);
-    var msgpack_unpack = function(){
-        try {
-            if(req.status != 200 && req.status != 0)
-                return null;
-            if(MessagePack.hasVBS){
-                data = req.responseBody;
-            }else{
-                data = req.responseText;
-            }
-            return MessagePack.unpack(data)
-        } finally {
-            if (fn)
-                req.onreadystatehange = null;
-            req = null;
-        }
-    }
-    if(fn){
-        req.onreadystatehange = function(){
-            if( req.readyState != 4)
-                return;
-            fn(MessagePack.unpack(msgpack_unpack()));
-        }
-    }else{
-        return msgpack_unpack();
-    }
-    return null;
-}
-
 MessagePack.Decoder = function(data, charSet){
     this.index = 0;
     this.data = data;
@@ -307,6 +272,7 @@ with({p: MessagePack.Decoder.prototype}){
                 var byte_array = new Array(length);
                 for(var i = 0; i < length; ++i){
                     byte_array[i] = msgpack_getByte(this.data, j + i);
+                //    byte_array[i] = this.data.charCodeAt(this.data, j + i);
                 }
                 return byte_array;
             }else{
@@ -317,7 +283,8 @@ with({p: MessagePack.Decoder.prototype}){
         p.getc = function(){
             var j = this.index;
             if(j < this.length){
-                return msgpack_getByte(this.data, j);
+                //return msgpack_getByte(this.data, j);
+                return this.data.charCodeAt(j);
             }else{
                 throw "MessagePackFailure: index is out of range";
             }

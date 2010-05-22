@@ -16,7 +16,6 @@
                   'End Function\r\n' , "VBScript"
                   );
       }
-            
 
       function testAssert_positive_fixnum() {
           var data = decodeURI("%00");
@@ -93,6 +92,7 @@
           var output = MessagePack.unpack(data);
           assertEquals("0xcf0000010000000000 == 1099511627776", 1099511627776, output);
       }
+
       function testAssert_int8() {
           var data = unescape("%d0%c0");
           var output = MessagePack.unpack(data);
@@ -129,8 +129,6 @@
           var output = MessagePack.unpack(data);
           assertEquals("hiragana ai", "あい", output);
       }
-
-  </script>
   </script>
 </head>
 <body>
