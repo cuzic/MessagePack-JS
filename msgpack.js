@@ -8,11 +8,12 @@ MessagePack.CharSet = 0;
 
 MessagePack.Decoder = function(data, charSet){
     this.index = 0;
-    this.data = data;
     if(MessagePack.hasVBS){
         this.length = msgpack_getLength(data);
+        this.data   = msgpack_binary_to_array(data);
     }else{
         this.length = data.length;
+        this.data   = data;
     }
     charSet = charSet || MessagePack.CharSet || 0;
     if(charSet == 'utf-8'){
@@ -32,16 +33,28 @@ MessagePack.Decoder = function(data, charSet){
 
 if(typeof execScript != 'undefined'){
     execScript(
-            'Function msgpack_getByte(data, pos)\r\n' +
-            '  msgpack_getByte = AscB(MidB(data, pos + 1, 1))\r\n'+
-            'End Function\r\n' +
-            'Function msgpack_substr(data, pos, len)\r\n' +
-            '  msgpack_substr = MidB(data, pos + 1, len)\r\n'+
-            'End Function\r\n' +
-            'Function msgpack_getLength(data) \r\n' +
-            '  msgpack_getLength = LenB(data)\r\n' +
-            'End Function\r\n' +
-            '\r\n', 'VBScript');
+            'Function msgpack_getByte(data, pos)\n' +
+            '  msgpack_getByte = AscB(MidB(data, pos + 1, 1))\n'+
+            'End Function\n',"VBScript");
+    execScript(
+            'Function msgpack_binary_to_array(binary)\n' +
+            '  Dim i, length\n'+
+            '  length = LenB(binary)\n'+
+            '  ReDim byte_array(length)\n'+
+            '  For i = 1 To length\n'+
+            '    byte_array(i - 1) = AscB(MidB(binary, i, 1))\n'+
+            '  Next\n'+
+            '  msgpack_binary_to_array = byte_array\n'+
+            'End Function\n', "VBScript");
+    execScript(
+            'Function msgpack_substr(data, pos, len)\n' +
+            '  msgpack_substr = MidB(data, pos + 1, len)\n'+
+            'End Function\n' +
+            'Function msgpack_getLength(data)\n' +
+            '  msgpack_getLength = LenB(data)\n' +
+            'End Function\n' +
+            '\n', 'VBScript');
+
 }
 
 MessagePack.hasVBS = 'msgpack_getByte' in this;
@@ -128,7 +141,7 @@ with({p: MessagePack.Decoder.prototype}){
     }
 
     p.unpack_uint8 = function(){
-        var byte = this.getc();
+        var byte = this.getc() & 0xff;
         this.index++;
         return byte;
     };
@@ -271,7 +284,7 @@ with({p: MessagePack.Decoder.prototype}){
             if(j + length <= this.length){
                 var byte_array = new Array(length);
                 for(var i = 0; i < length; ++i){
-                    byte_array[i] = msgpack_getByte(this.data, j + i);
+                    byte_array[i] = this.data[j + i];
                 //    byte_array[i] = this.data.charCodeAt(this.data, j + i);
                 }
                 return byte_array;
@@ -283,8 +296,8 @@ with({p: MessagePack.Decoder.prototype}){
         p.getc = function(){
             var j = this.index;
             if(j < this.length){
-                //return msgpack_getByte(this.data, j);
-                return this.data.charCodeAt(j);
+                return this.data[j];
+                //return this.data.charCodeAt(j);
             }else{
                 throw "MessagePackFailure: index is out of range";
             }
@@ -293,8 +306,8 @@ with({p: MessagePack.Decoder.prototype}){
         p.read = function(length){
             var j = this.index;
             if(j + length <= this.length){
-                var bytes = [];
-                for(var i = 0; i < length; ++i){
+                var bytes = new Array(length);
+                for(var i = length - 1; i >= 0; --i){
                     bytes[i] = this.data.charCodeAt(j+i);
                 }
                 return bytes;
