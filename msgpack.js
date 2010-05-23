@@ -9,8 +9,13 @@ MessagePack.CharSet = 0;
 MessagePack.Decoder = function(data, charSet){
     this.index = 0;
     if(MessagePack.hasVBS){
-        this.length = msgpack_getLength(data);
-        this.data   = msgpack_binary_to_array(data);
+        if(typeof(data) == "unknown"){
+            this.length = msgpack_getLength(data);
+            this.byte_array_to_string(data);
+        }else{
+            this.length = msgpack_getLength(data);
+            this.data = data;
+        }
     }else{
         this.length = data.length;
         this.data   = data;
@@ -33,28 +38,26 @@ MessagePack.Decoder = function(data, charSet){
 
 if(typeof execScript != 'undefined'){
     execScript(
-            'Function msgpack_getByte(data, pos)\n' +
-            '  msgpack_getByte = AscB(MidB(data, pos + 1, 1))\n'+
+            'Dim g_msgpack_binary_data\n' +
+            'Sub msgpack_set_binary_data(binary)\n' +
+            '    g_msgpack_binary_data = binary\n' +
+            'End Sub\n' +
+            'Function msgpack_getByte(pos)\n' +
+            '  msgpack_getByte = AscB(MidB(g_msgpack_binary_data, pos + 1, 1))\n'+
             'End Function\n',"VBScript");
     execScript(
-            'Function msgpack_binary_to_array(binary)\n' +
-            '  Dim i, length\n'+
-            '  length = LenB(binary)\n'+
-            '  ReDim byte_array(length)\n'+
-            '  For i = 1 To length\n'+
-            '    byte_array(i - 1) = AscB(MidB(binary, i, 1))\n'+
+            'Function msgpack_substr(pos, len)\n' +
+            '  Dim array()\n'+
+            '  ReDim array(len)\n'+
+            '  For i = 1 To len\n'+
+            '    array(i-1) = AscB(MidB(g_msgpack_binary_data, pos + i, 1))\n'+
             '  Next\n'+
-            '  msgpack_binary_to_array = byte_array\n'+
-            'End Function\n', "VBScript");
-    execScript(
-            'Function msgpack_substr(data, pos, len)\n' +
-            '  msgpack_substr = MidB(data, pos + 1, len)\n'+
+            '  msgpack_substr = array\n'+
             'End Function\n' +
             'Function msgpack_getLength(data)\n' +
             '  msgpack_getLength = LenB(data)\n' +
             'End Function\n' +
             '\n', 'VBScript');
-
 }
 
 MessagePack.hasVBS = 'msgpack_getByte' in this;
@@ -211,26 +214,26 @@ with({p: MessagePack.Decoder.prototype}){
         var bytes = this.read(size);
         this.index += size;
         if(this.charSet == 1){
-            return String.prototype.fromCharCode.apply(String, bytes);
+            return String.fromCharCode.apply(String, bytes);
         }else if(this.charSet == -1){
             return bytes;
         }
         else{
         // assume UTF-8 string
-            var i = 0, str = "";
-            while(i < bytes.length){
-                var c = bytes[i];
+            var i = 0, str = "", c, code;
+            while(i < size){
+                c = bytes[i];
                 if( c < 128){
                     str += String.fromCharCode(c);
                     i++;
                 }
                 else if((c ^ 0xc0) < 32){
-                    var code = (c ^ 0xc0) << 6 | (bytes[i + 1] & 63);
+                    code = ((c ^ 0xc0) << 6) | (bytes[i+1] & 63);
                     str += String.fromCharCode(code);
                     i += 2;
                 }
                 else {
-                    var code = ((c & 15) << 12) | ((bytes[i+1] & 63) << 6) |
+                    code = ((c & 15) << 12) | ((bytes[i+1] & 63) << 6) |
                         (bytes[i+2] & 63);
                     str += String.fromCharCode(code);
                     i += 3;
@@ -278,50 +281,138 @@ with({p: MessagePack.Decoder.prototype}){
         return (sign == 0 ? 1 : -1) * frac;
     }
 
-    if(MessagePack.hasVBS){
-        p.read = function(length){
-            var j = this.index;
-            if(j + length <= this.length){
-                var byte_array = new Array(length);
-                for(var i = 0; i < length; ++i){
-                    byte_array[i] = this.data[j + i];
-                //    byte_array[i] = this.data.charCodeAt(this.data, j + i);
+    p.byte_array_to_string = function(data){
+        var binary_to_js_array_hex = function(binary){
+            var xmldom = new ActiveXObject("Microsoft.XMLDOM");
+            var bin = xmldom.createElement("bin");
+            bin.nodeTypedValue = data;
+            bin.dataType = "bin.hex";
+
+            var text = bin.text;
+            var size = text.length;
+            return function (start, length){
+                var i = 0, chunk = 4, bytes = []
+                    chunk2 = chunk*2, hex, int32;
+                for(; i + 3 < length; i+=4){
+                    hex = text.substr(2*(i + start), chunk2);
+                    int32 = parseInt(hex, 16);
+
+                    bytes[i    ] = (int32 > 24) & 0xff;
+                    bytes[i + 1] = (int32 > 16) & 0xff;
+                    bytes[i + 2] = (int32 >  8) & 0xff;
+                    bytes[i + 3] =  int32       & 0xff;
                 }
-                return byte_array;
+                for(i -= 3; i < length; i++){
+                    hex = this.data.substr(2*(i+start), 2);
+                    bytes[i] = parseInt(hex, 16);
+                }
+                return bytes;
+            }
+        }
+
+        var binary_to_js_array_base64 = function(binary){
+            var chr2index = {};
+            var text;
+            (function(){
+               var xmldom = new ActiveXObject("Microsoft.XMLDOM");
+               var bin = xmldom.createElement("bin");
+               bin.dataType = "bin.base64";
+               bin.nodeTypedValue = binary;
+
+               text = bin.text.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+
+               var b64map =
+               "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+               for(var i = 0, length = b64map.length;  i < length ; i++){
+                   chr2index[b64map.charAt(i)] = i;
+               }
+            })();
+            var chr2, chr3, prev_i = 0;
+            return function(start, length){
+                var bytes, last_pos = Math.floor(3 * prev_i / 4);
+                switch(last_pos - start){
+                    case 2:
+                        bytes = [chr2, chr3];
+                        break;
+                    case 1:
+                        bytes = [chr3];
+                        break;
+                    default:
+                        bytes = [];
+                }
+                var j = bytes.length;
+                if(length <= j){
+                    bytes.length = length;
+                    return bytes;
+                }
+                var i = prev_i, enc1, enc2, enc3, enc4,
+                    last = 4*Math.ceil((start + length) / 3);
+                while(i < last){
+                    enc1 = chr2index[text.charAt(i++)];
+                    enc2 = chr2index[text.charAt(i++)];
+                    enc3 = chr2index[text.charAt(i++)];
+                    enc4 = chr2index[text.charAt(i++)];
+
+                    bytes[j++] = (enc1 << 2) | (enc2 >> 4);
+                    bytes[j++] = ((enc2 & 0x0f) << 4) | (enc3 >> 2);
+                    bytes[j++] = ((enc3 & 0x03) << 6) | enc4;
+                }
+                prev_i = i;
+                chr2 = bytes[j-2];
+                chr3 = bytes[j-1];
+                bytes.length = length;
+                return bytes;
+            }
+        }
+
+        var binary_to_js_array_vbs = function(data){
+            msgpack_set_binary_data(data);
+            return function(position, length){
+                return msgpack_substr(position, length).toArray();
+            }
+        };
+
+        //var bytes_substr = binary_to_js_array_hex(data);
+        var bytes_substr = binary_to_js_array_base64(data);
+        //var bytes_substr = binary_to_js_array_vbs(data);
+
+        this.read = function(length){
+            var j = this.index, i = 0;
+            if( j + length <= this.length){
+                return bytes_substr( j, length);
             }else{
                 throw "MessagePackFailure: index is out of range";
             }
         }
 
-        p.getc = function(){
+        this.getc = function(){
             var j = this.index;
             if(j < this.length){
-                return this.data[j];
-                //return this.data.charCodeAt(j);
+                return bytes_substr( j, 1)[0];
             }else{
                 throw "MessagePackFailure: index is out of range";
             }
         }
-    }else{
-        p.read = function(length){
-            var j = this.index;
-            if(j + length <= this.length){
-                var bytes = new Array(length);
-                for(var i = length - 1; i >= 0; --i){
-                    bytes[i] = this.data.charCodeAt(j+i);
-                }
-                return bytes;
-            }else{
-                throw "MessagePackFailure: index is out of range";
+    }
+
+    p.read = function(length){
+        var j = this.index;
+        if(j + length <= this.length){
+            var bytes = new Array(length);
+            for(var i = length - 1; i >= 0; --i){
+                bytes[i] = this.data.charCodeAt(j+i);
             }
+            return bytes;
+        }else{
+            throw "MessagePackFailure: index is out of range";
         }
-        p.getc = function(){
-            var j = this.index;
-            if(j < this.length){
-                return this.data.charCodeAt(j);
-            }else{
-                throw "MessagePackFailure: index is out of range";
-            }
+    }
+    p.getc = function(){
+        var j = this.index;
+        if(j < this.length){
+            return this.data.charCodeAt(j);
+        }else{
+            throw "MessagePackFailure: index is out of range";
         }
     }
 }

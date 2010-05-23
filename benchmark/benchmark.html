@@ -19,7 +19,8 @@
           },
           onSuccess: function(response) {
               if(MessagePack.hasVBS){
-                  $msgpack = response.transport.responseBody;
+                  var binary = response.transport.responseBody;
+                  $msgpack = binary;
               }else{
                   $msgpack = response.responseText;
               }
@@ -40,17 +41,17 @@
       });
 };
 
-  function getTimeMeasurementJavaScript(func){
+  function getTimeMeasurementJavaScript(name, func){
       timeStart=new Date();
 
       func();
 
       totalTime = (new Date - timeStart);
-      window.alert(totalTime + " milli sec");
+      C(name + ":" + totalTime + " milli sec");
   }
 
   function msgpack_benchmark(msgpack){
-      getTimeMeasurementJavaScript(function(){
+      getTimeMeasurementJavaScript("msgpack", function(){
           var data;
           for(var i = 0; i < 10; i++){
               data = MessagePack.unpack(msgpack);
@@ -59,7 +60,7 @@
   }
 
   function json_benchmark(json){
-      getTimeMeasurementJavaScript(function(){
+      getTimeMeasurementJavaScript("json", function(){
           var data;
           for(var i = 0; i < 10; i++){
               data = eval(json);
