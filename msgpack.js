@@ -4,12 +4,24 @@ MessagePack.unpack = function(data){
     return unpacker.unpack();
 };
 
-MessagePack.CharSet = 0;
+MessagePack.UTF8      = 0;
+MessagePack.ASCII8bit = 1;
+MessagePack.UTF16     = 2; // not yet implemented
+MessagePack.ByteArray = -1;
+MessagePack.CharSet   = MessagePack.UTF8;
 
+// data : responseText for FireFox, Chrome, Safari ...
+//      : responseBody for Internet Explorer
+// charSet : specifies how to handle with raw data
+//      'utf-8': assume raw data is UTF-8 String
+//      'ascii': assume raw data is ASCII-8bit String
+//      'utf16': assume raw data is UTF-16 String
+//      'byte-array': not convert to string. just return array of numbers
 MessagePack.Decoder = function(data, charSet){
     this.index = 0;
     if(MessagePack.hasVBS){
         if(typeof(data) == "unknown"){
+            // assume data is byte array
             this.length = msgpack_getLength(data);
             this.byte_array_to_string(data);
         }else{
@@ -22,16 +34,19 @@ MessagePack.Decoder = function(data, charSet){
     }
     charSet = charSet || MessagePack.CharSet || 0;
     if(charSet == 'utf-8'){
-        charSet = 0;
+        charSet = MessagePack.UTF8;
     }
-    else if(charSet == 'unicode'){
-        charSet = 1;
+    else if(charSet == 'ascii'){
+        charSet = MessagePack.ASCII8bit;
     }
-    else if(charSet == 'raw'){
-        charSet = -1;
+    else if(charSet == 'utf16'){
+        charSet = MessagePack.UTF16;
+    }
+    else if(charSet == 'byte-array'){
+        charSet = MessagePack.ByteArray;
     }
     else{
-        charSet = 0;
+        charSet = MessagePack.UTF8;
     }
 }
 
@@ -151,7 +166,7 @@ with({p: MessagePack.Decoder.prototype}){
 
     p.unpack_uint16 = function(){
         var bytes = this.read(2);
-        var uint16 = 
+        var uint16 =
             (bytes[0] << 8) + bytes[1];
         this.index += 2;
         return uint16;
@@ -159,7 +174,7 @@ with({p: MessagePack.Decoder.prototype}){
 
     p.unpack_uint32 = function(){
         var bytes = this.read(4);
-        var uint32 = 
+        var uint32 =
             bytes[0] * Math.pow(2, 24) +
             bytes[1] * Math.pow(2, 16) +
             bytes[2] * Math.pow(2, 8) +
@@ -170,7 +185,7 @@ with({p: MessagePack.Decoder.prototype}){
 
     p.unpack_uint64 = function(){
         var bytes = this.read(8);
-        var uint64 = 
+        var uint64 =
             bytes[0] * Math.pow(2, 56) +
             bytes[1] * Math.pow(2, 48) +
             bytes[2] * Math.pow(2, 40) +
@@ -213,9 +228,11 @@ with({p: MessagePack.Decoder.prototype}){
         }
         var bytes = this.read(size);
         this.index += size;
-        if(this.charSet == 1){
+        if(this.charSet == MessagePack.ASCII8bit){
+            // For 8bit encoding
             return String.fromCharCode.apply(String, bytes);
-        }else if(this.charSet == -1){
+        }else if(this.charSet == MessagePack.ByteArray){
+            // Array of numbers
             return bytes;
         }
         else{
