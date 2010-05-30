@@ -1,0 +1,99 @@
+<html>
+ <head>
+  <title> test </title>
+  <script language="JavaScript" type="text/javascript" 
+      src="./jsunit/app/jsUnitCore.js">
+  </script>
+  <script language="JavaScript" type="text/javascript" 
+      src="./msgpack.js">
+  </script>
+  <script language="JavaScript" type="text/javascript">
+      if(MessagePack.hasVBS){
+          // quick hack for Internet Explorer unescape();
+          execScript(
+                  'Function msgpack_getByte(data, pos)\r\n' +
+                  '  msgpack_getByte = AscB(MidB(data, 2*pos + 1, 1))\r\n'+
+                  'End Function\r\n' , "VBScript"
+                  );
+      }
+
+      function _test_pack(value, hex){
+          var data = MessagePack.pack(value);
+          var pp   = "\"" + hex.replace(/../g, "\\x$&") + "\""
+          var str  = eval(pp);
+          if(value == 0.1){
+               var s = "";
+               for(var i = 0; i < data.length; ++i){
+                   s += data.charCodeAt(i).toString(16);
+               }
+          }
+          assertEquals(str, data);
+      }
+
+      function test_pack_positive_fixnum() {
+          _test_pack(0, "00");
+      }
+      function test_pack_negative_fixnum() {
+          _test_pack(-1, "ff");
+      }
+      function test_pack_uint8() {
+          _test_pack(255, "ccff");
+      }
+      function test_pack_FixRaw() {
+          _test_pack("a", "a161");
+      }
+      function test_pack_FixArray() {
+          _test_pack([0], "9100");
+      }
+      function test_pack_FixMap() {
+          _test_pack({"a": 64}, "81a16140");
+      }
+      function test_pack_Nil() {
+          _test_pack(null, "c0");
+      }
+      function test_pack_True() {
+          _test_pack(true, "c3");
+      }
+      function test_pack_False() {
+          _test_pack(false, "c2");
+      }
+      function test_pack_double() {
+          _test_pack(0.1, "cb3fb999999999999a");
+      }
+      function test_pack_uint16() {
+          _test_pack(32768, "cd8000");
+      }
+      function test_pack_uint32() {
+          _test_pack(1048576, "ce00100000");
+      }
+      function test_pack_int8() {
+          _test_pack(-64, "d0c0");
+      }
+      function test_pack_int16() {
+          _test_pack(-1024, "d1fc00");
+      }
+      function test_pack_int32() {
+          _test_pack(-1048576, "d2fff00000");
+      }
+      function test_pack_int64() {
+          _test_pack(-1099511627776, "d3ffffff0000000000");
+      }
+      function test_pack_raw16() {
+          var spaces = "                                        ";
+          _test_pack(spaces, "da002820202020202020202020202020202020202020202020202020202020202020202020202020202020");
+      }
+      function test_pack_array16() {
+          var ary = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+          _test_pack(ary, "dc001000000000000000000000000000000000");
+      }
+
+      function test_pack_hiragana() {
+          //var data = MessagePack.pack("あい");
+          //assertEquals("hiragana ai", data, "\x");
+      }
+  </script>
+</head>
+<body>
+
+</body>
+</html>

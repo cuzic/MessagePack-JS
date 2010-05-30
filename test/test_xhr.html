@@ -1,0 +1,195 @@
+<html>
+ <head>
+  <title> test xml http request</title>
+  <script language="JavaScript" type="text/javascript" 
+      src="./jsunit/app/jsUnitCore.js">
+  </script>
+  <script language="JavaScript" type="text/javascript" 
+      src="./msgpack.js">
+  </script>
+  <script language="JavaScript" type="text/javascript">
+      function async_request(url, fn){
+          var xhr; 
+          if(window.ActiveXObject) {
+              try {
+                  xhr = new ActiveXObject('Msxml2.XMLHTTP');
+              }
+              catch(e) {
+                  xhr = new ActiveXObject('Microsoft.XMLHTTP');
+              }
+          }
+          else if(window.XMLHttpRequest) {
+               xhr = new XMLHttpRequest();
+          } else {
+              throw "no xml http request";
+          }
+
+          var callback = function(){
+              if(xhr.readyState  == 4) {
+                  if(window.ActiveXObject){
+                      fn(xhr.responseBody);
+                  }
+                  else{
+                      fn(xhr.responseText);
+                  }
+              }
+          };
+
+          xhr.onreadystatechange  = callback;
+          if(xhr.overrideMimeType){
+              xhr.overrideMimeType('text/plain; charset=x-user-defined');
+          }
+
+          xhr.open("GET", url,  false); 
+          xhr.send(null); 
+      }
+
+      function _test_unpack(path, value_or_func){
+          var url = "http://localhost:5001/unpack/";
+          var callback = function(msg){
+              var data = MessagePack.unpack(msg);
+              if(typeof(value_or_func) == "function"){
+                  var func = value_or_func;
+                  func(data);
+              }
+              else{
+                  var value = value_or_func;
+                  assertEquals(path + ": \"" + escape(data) +
+                          "\" == " + value, value, data);
+              }
+              if(value != data){
+                  C(value + "!=" + data);
+              }
+              else{
+                  C(value + "==" + data);
+              }
+          };
+          async_request(url + path, callback);
+      }
+
+      function testAssert_fixnum() {
+          _test_unpack("fixnum", 100);
+      }
+      function testAssert_null() {
+          _test_unpack("null", function(data){
+                  assertNull(data);
+                  });
+      }
+      function testAssert_true() {
+          _test_unpack("true", function(data){
+                  assertTrue(data);
+                  });
+      }
+      function testAssert_fixraw() {
+          _test_unpack("fixraw", "0123456789abc");
+      }
+
+      function testAssert_fixarray(){
+          _test_unpack("fixarray", function(data){
+                  assertArrayEquals(data, [0, true, false]);
+          });
+      }
+      function testAssert_fixmap() {
+          _test_unpack("fixmap", function(data){
+              assertObjectEquals(data, {0: "0", 1: "1"});
+          });
+      }
+      function testAssert_float() {
+          _test_unpack("float", 10.5);
+      }
+      function testAssert_uint8() {
+          _test_unpack("uint8", 200);
+      }
+      function testAssert_uint16() {
+          _test_unpack("uint16", 40000);
+      }
+      function testAssert_uint32() {
+          _test_unpack("uint32", 3*Math.pow(2, 30));
+      }
+      function testAssert_uint64() {
+          _test_unpack("uint64", 3*Math.pow(2, 62));
+      }
+      function testAssert_int8() {
+          _test_unpack("int8", -100);
+      }
+      function testAssert_int16() {
+          _test_unpack("int16", -1000);
+      }
+      function testAssert_int32() {
+          _test_unpack("int32", -1000000);
+      }
+      function testAssert_int64() {
+          _test_unpack("int64", -Math.pow(10, 15));
+      }
+      function testAssert_raw16() {
+          var a = "";
+          for(var i = 0; i < 1000; i++){
+              a.concat("a");
+          }
+          _test_unpack("raw16", a);
+      }
+      function testAssert_raw32() {
+          var a = "";
+          for(var i = 0; i < 100000; i++){
+              a.concat("a");
+          }
+          _test_unpack("raw32", a);
+      }
+      function testAssert_array16() {
+          var a = [];
+          for(var i = 0; i < 1000; i++){
+              a[i] = 1;
+          }
+          _test_unpack("array16", function(data){
+                  assertArrayEquals(data, a);
+          });
+      }
+
+      function testAssert_array32() {
+          var a = [];
+          for(var i = 0; i < 100000; i++){
+              a[i] = 1;
+          }
+          _test_unpack("array32", function(data){
+                  assertArrayEquals(data, a);
+                  });
+      }
+      function testAssert_map16() {
+          var a = {};
+          for(var i = 0; i < 1000; i++){
+              a[i] = "" + i;
+          }
+          _test_unpack("map16", function(data){
+                  assertObjectEquals(data, a);
+                  });
+      }
+
+      function testAssert_map32() {
+          var a = {};
+          for(var i = 0; i < 100000; i++){
+              a[i] = "" + i;
+          }
+          _test_unpack("map32", function(data){
+                  assertObjectEquals(data, a);
+                  });
+      }
+  </script>
+</head>
+<body>
+    <input type=button onclick="testAssert_fixarray();" value="fixarray">
+    <input type=button onclick="testAssert_uint8();" value="uint8">
+    <input type=button onclick="testAssert_fixnum();" value="fixnum">
+    <input type=button onclick="testAssert_uint16();" value="uint16">
+    <input type=button onclick="testAssert_uint32();" value="uint32">
+    <input type=button onclick="testAssert_float();" value="float">
+    <br/>
+    <textarea id="console" cols=50 rows=10>
+    </textarea>
+    <script type="text/javascript">
+        function C(msg){
+            var ta = document.getElementById("console");
+            ta.value = msg + "\n" + ta.value;
+        }
+    </script>
+</body>
+</html>
