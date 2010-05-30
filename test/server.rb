@@ -72,5 +72,5 @@ def webrick(config = {})
     end
 end
 
-webrick :DocumentRoot => Dir.pwd,
+webrick :DocumentRoot => File.expand_path(File.join(File.dirname(__FILE__), "..")),
     :Port => 5001

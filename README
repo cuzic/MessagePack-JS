@@ -3,16 +3,16 @@
 
 ** usage
 
-  var $true  = MessagePack.unpack(unescape("%c3"));
+  var $true  = MessagePack.unpack("\xc3");
   alert($true); // true
 
-  var int8   = MessagePack.unpack(unescape("%d0%c0"));
+  var int8   = MessagePack.unpack("\xd0\xc0"));
   alert(int8); // -64
 
-  var fixraw = MessagePack.unpack(unescape("%a1%61"));
+  var fixraw = MessagePack.unpack("\xa1\x61");
   alert(fixraw); // 'a'
 
-  var int32  = MessagePack.unpack(unescape("%d2%ff%f0%00%00"));
+  var int32  = MessagePack.unpack("\xd2\xff\xf0\x00\x00");
   alert(int32); // -1048576
 
 ** environment
@@ -25,18 +25,27 @@
   MIT Lisence
 
 ** Test
-  Test code (tests.html) is targeted for JsUnit
+  Test code (tests.html) requires JsUnit
   Benchmark code needs prototype.js
-  if you want to test and benchmark msgpack.js,
+  If you want to test and benchmark msgpack.js,
     please deploy as follows:
-        ${MessagePack-JS-DIR}/msgpack.js
-        ${MessagePack-JS-DIR}/tests.html
-        # see jsunit < http://github.com/pivotal/jsunit >
-        ${MessagePack-JS-DIR}/jsunit/testRunner.html 
-        ${MessagePack-JS-DIR}/jsunit/app/jsUnitCore.js
-        ${MessagePack-JS-DIR}/jsunit/testRunner.html
-        ${MessagePack-JS-DIR}/jsunit/app/jsUnitCore.js
+        ./lib/msgpack.js
+        ./test/test_unpack.html
+        ./test/test_pack.html
+        ./test/test_xhr.html
 
-        ${MessagePack-JS-DIR}/benchmark/benchmark.html
+        # see jsunit < http://github.com/pivotal/jsunit >
+        ./test/jsunit/testRunner.html 
+        ./test/jsunit/app/jsUnitCore.js
+        ./test/jsunit/testRunner.html
+        ./test/jsunit/app/jsUnitCore.js
+
+        ./benchmark/benchmark.html
         # see prototype.js < http://www.prototypejs.org/ >
-        ${MessagePack-JS-DIR}/benchmark/prototype/prototype.js
+        ./benchmark/prototype/prototype.js
+
+  Before you test test_xhr.html, you must start server.rb.
+    > ruby server.rb
+  server.rb require Ruby MessagePack Library.
+  Please install Ruby MessagePack Library:
+    > gem install msgpack
